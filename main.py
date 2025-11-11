@@ -9,31 +9,36 @@ from datetime import datetime
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
+def log(message):
+    """لاگ کردن پیام‌ها"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
 def get_whale_transactions():
-    """دریافت تراکنش‌های بزرگ از mempool.space"""
+    """دریافت تراکنش‌های بزرگ"""
     try:
-        print(f"{datetime.now()} - 🔍 در حال بررسی تراکنش‌های بیت‌کوین...")
+        log("🔍 بررسی تراکنش‌های بیت‌کوین...")
         response = requests.get('https://mempool.space/api/mempool', timeout=10)
         mempool = response.json()
         
         large_txs = []
-        for tx_id, tx_data in list(mempool.items())[:30]:  # بررسی 30 تراکنش اول
-            if tx_data.get('fee', 0) > 50000:  # فیلتر کارمزد بالا
+        for tx_id, tx_data in list(mempool.items())[:50]:
+            if tx_data.get('fee', 0) > 50000:
                 large_txs.append({
                     'id': tx_id,
                     'fee': tx_data['fee'],
                     'size': tx_data['size']
                 })
         
-        print(f"✅ {len(large_txs)} تراکنش بزرگ یافت شد")
-        return large_txs[:3]  # فقط ۳ تراکنش بزرگ
+        log(f"✅ {len(large_txs)} تراکنش بزرگ یافت شد")
+        return large_txs[:3]
         
     except Exception as e:
-        print(f"❌ خطا در دریافت داده: {e}")
+        log(f"❌ خطا: {e}")
         return []
 
 def send_alert(bot, transactions):
-    """ارسال هشدار به تلگرام"""
+    """ارسال هشدار"""
     if not transactions:
         return
     
@@ -42,46 +47,33 @@ def send_alert(bot, transactions):
         message += f"**تراکنش #{i}**\n"
         message += f"💰 کارمزد: {tx['fee']:,} ساتوشی\n"
         message += f"📦 حجم: {tx['size']} بایت\n"
-        message += f"🆔 شناسه: {tx['id'][:15]}...\n"
         message += "─────────────────\n"
     
     try:
-        bot.send_message(
-            chat_id=CHAT_ID,
-            text=message,
-            parse_mode='Markdown'
-        )
-        print("📤 پیام با موفقیت ارسال شد")
+        bot.send_message(chat_id=CHAT_ID, text=message, parse_mode='Markdown')
+        log("📤 پیام ارسال شد")
     except Exception as e:
-        print(f"❌ خطا در ارسال پیام: {e}")
+        log(f"❌ ارسال پیام: {e}")
 
 def main():
     """برنامه اصلی"""
-    print("🚀 ربات نهنگ‌یاب بیت‌کوین شروع به کار کرد")
-    
-    # ایجاد ربات
+    log("🚀 ربات نهنگ‌یاب شروع به کار کرد")
     bot = Bot(token=TELEGRAM_TOKEN)
     
     while True:
         try:
-            # بررسی تراکنش‌ها
             transactions = get_whale_transactions()
-            
-            # ارسال هشدار اگر تراکنش بزرگی وجود دارد
             if transactions:
                 send_alert(bot, transactions)
             else:
-                print("✅ هیچ تراکنش بزرگی یافت نشد")
+                log("✅ هیچ تراکنش بزرگی یافت نشد")
             
-            # انتظار ۲۰ دقیقه (1200 ثانیه)
-            print("⏳ منتظر ۲۰ دقیقه...")
-            time.sleep(1200)
-            
+            log("⏳ انتظار 20 دقیقه...")
+            time.sleep(1200)  # 20 دقیقه
         except Exception as e:
-            print(f"❌ خطا در برنامه اصلی: {e}")
-            print("⏳ تلاش مجدد در ۶۰ ثانیه...")
+            log(f"❌ خطای اصلی: {e}")
             time.sleep(60)
 
 if __name__ == "__main__":
     main()
-... 
+```
